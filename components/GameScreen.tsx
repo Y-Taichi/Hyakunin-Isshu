@@ -283,8 +283,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
         <div className="w-full flex justify-center mb-4 md:mb-8 min-h-[80px] md:min-h-[120px] items-center">
           {mode === GameMode.KAMI_TO_SHIMO ? (
             // KAMI -> SHIMO: Show Kami text
-            <div className="relative w-full max-w-3xl bg-white/90 p-6 md:p-8 rounded-xl shadow-lg border-2 border-stone-200 min-h-[100px] flex items-center justify-center">
-              <h2 className="text-2xl md:text-4xl font-serif text-stone-800 text-center tracking-widest leading-relaxed whitespace-nowrap">
+            <div className="relative w-full max-w-3xl bg-white/90 p-6 md:p-8 rounded-xl shadow-lg border-2 border-stone-200 min-h-[100px] flex items-center justify-start">
+              <h2 className="text-2xl md:text-4xl font-serif text-stone-800 text-left tracking-widest leading-relaxed whitespace-nowrap">
                 {displayedKami}
               </h2>
             </div>
