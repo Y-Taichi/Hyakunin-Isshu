@@ -26,3 +26,9 @@ export function splitShimoText(text: string): string[] {
   }
   return lines;
 }
+
+// Format Kami text for mobile: 9 chars + newline + remaining (8 chars max usually)
+export function formatKamiText(text: string): string {
+  if (text.length <= 9) return text;
+  return text.substring(0, 9) + '\n' + text.substring(9);
+}

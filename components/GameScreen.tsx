@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameMode, SakasamaMode, Poem, GameStats, QueuedPoem } from '../types';
 import { POEMS } from '../constants';
-import { shuffleArray } from '../utils';
+import { shuffleArray, formatKamiText } from '../utils';
 import Card from './Card';
 import { Home, RefreshCcw, Keyboard } from 'lucide-react';
 
@@ -11,16 +11,23 @@ interface GameScreenProps {
   onExit: () => void;
 }
 
+interface GameOption {
+  poem: Poem;
+  isSakasama: boolean;
+}
+
 const TYPEWRITER_SPEED_MS = 150;
 const MISTAKE_PENALTY_DELAY_MS = 2500; // Updated to 2.5s
 // Correct delay removed (effectively 0 for instant progression)
 
 const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) => {
   // State
+  // State
+  const [isMobile, setIsMobile] = useState(false);
   const [queue, setQueue] = useState<QueuedPoem[]>([]);
   const [currentPoem, setCurrentPoem] = useState<Poem | null>(null);
-  const [options, setOptions] = useState<Poem[]>([]);
-  
+  const [options, setOptions] = useState<GameOption[]>([]);
+
   // Stats
   const [stats, setStats] = useState<Record<number, GameStats>>({});
   const [startTime, setStartTime] = useState<number>(0);
@@ -29,7 +36,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
   const [displayedKami, setDisplayedKami] = useState('');
   const [feedback, setFeedback] = useState<'incorrect' | null>(null); // 'correct' removed as we skip immediately
   const [isReviewMode, setIsReviewMode] = useState(false);
-  const [isSakasamaThisTurn, setIsSakasamaThisTurn] = useState(false);
+  const [isSakasamaThisTurn, setIsSakasamaThisTurn] = useState(false); // Used for ShimoToKami (or removed if not needed, but ShimoToKami shows one card)
   const [highlightCorrectId, setHighlightCorrectId] = useState<number | null>(null);
 
   // Refs for logic
@@ -39,6 +46,14 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
   // --- Initialization ---
 
   useEffect(() => {
+    // Mobile Check
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
     // Initial Shuffle
     const initialQueue: QueuedPoem[] = shuffleArray(POEMS).map(p => ({
       poemId: p.id,
@@ -46,7 +61,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
     }));
     setQueue(initialQueue);
     nextTurn(initialQueue);
-    
+
     return () => {
       if (kamiIntervalRef.current) clearInterval(kamiIntervalRef.current);
     };
@@ -61,12 +76,14 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
     }
 
     if (mode !== GameMode.KAMI_TO_SHIMO || !currentPoem) {
-       if (currentPoem) setDisplayedKami(currentPoem.kami);
-       return;
+      if (currentPoem) setDisplayedKami(currentPoem.kami);
+      return;
     }
 
     setDisplayedKami('');
-    const fullText = currentPoem.kami;
+    // Format text for mobile if needed
+    const rawText = currentPoem.kami;
+    const fullText = isMobile ? formatKamiText(rawText) : rawText;
     let charCount = 0;
 
     kamiIntervalRef.current = window.setInterval(() => {
@@ -100,14 +117,14 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
       // In SHIMO_TO_KAMI: 1-6
       const key = e.key;
       const num = parseInt(key, 10);
-      
+
       if (!isNaN(num)) {
         let index = -1;
         if (num === 0) index = 9;
         else index = num - 1;
 
         if (index >= 0 && index < options.length) {
-          handleOptionClick(options[index].id);
+          handleOptionClick(options[index].poem.id);
         }
       }
     };
@@ -127,7 +144,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
 
     const nextItem = currentQueue[0];
     const poem = POEMS.find(p => p.id === nextItem.poemId);
-    
+
     if (!poem) {
       const remaining = currentQueue.slice(1);
       setQueue(remaining);
@@ -138,25 +155,43 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
     let isSakasama = false;
     if (sakasamaMode === SakasamaMode.ON) isSakasama = true;
     else if (sakasamaMode === SakasamaMode.RANDOM) isSakasama = Math.random() > 0.5;
-    
+
     setIsSakasamaThisTurn(isSakasama);
     setCurrentPoem(poem);
     setFeedback(null);
     setHighlightCorrectId(null);
     setStartTime(Date.now());
-    
+
+    // Generate Options
     // Generate Options
     const otherPoems = POEMS.filter(p => p.id !== poem.id);
-    const distractorsCount = mode === GameMode.KAMI_TO_SHIMO ? 9 : 5;
+
+    // Distractors count: Mobile KAMI_TO_SHIMO -> 3 (Total 4). Desktop -> 9 (Total 10).
+    // ShimoToKami -> 5 (Total 6) - keeping unchanged for now unless requested.
+    let distractorsCount = mode === GameMode.KAMI_TO_SHIMO ? 9 : 5;
+    if (isMobile && mode === GameMode.KAMI_TO_SHIMO) {
+      distractorsCount = 3;
+    }
+
     const distractors = shuffleArray(otherPoems).slice(0, distractorsCount);
-    const allOptions = shuffleArray([poem, ...distractors]);
-    setOptions(allOptions);
+    const allOptionsPoem = shuffleArray([poem, ...distractors]);
+
+    // Determine Sakasama for each option
+    const newOptions: GameOption[] = allOptionsPoem.map(p => {
+      let isCardSakasama = false;
+      if (sakasamaMode === SakasamaMode.ON) isCardSakasama = true;
+      else if (sakasamaMode === SakasamaMode.RANDOM) isCardSakasama = Math.random() > 0.5;
+
+      return { poem: p, isSakasama: isCardSakasama };
+    });
+
+    setOptions(newOptions);
   };
 
   const startReviewMode = () => {
     setIsReviewMode(true);
     completedPoemsCount.current = 0;
-    
+
     const statValues = Object.values(stats) as GameStats[];
     const sortedStats = statValues.sort((a, b) => {
       if (b.mistakes !== a.mistakes) return b.mistakes - a.mistakes;
@@ -181,13 +216,13 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
   // --- Interaction ---
 
   const handleSkip = () => {
-     if (currentPoem) handleWrongAnswer(currentPoem.id);
+    if (currentPoem) handleWrongAnswer(currentPoem.id);
   };
 
   const handleWrongAnswer = (correctId: number) => {
     setFeedback('incorrect');
     setHighlightCorrectId(correctId);
-    
+
     // Record Stats (Mistake)
     setStats(prev => {
       const existing = prev[correctId] || { poemId: correctId, timeTaken: 0, mistakes: 0, lastResult: null };
@@ -238,7 +273,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
       // Show full text briefly? No, user said immediate.
       // But we should probably ensure the full text was visible for a split second?
       // Request says "Proceed immediately".
-      
+
       const nextQueue = queue.slice(1);
       setQueue(nextQueue);
       if (!isReviewMode) completedPoemsCount.current += 1;
@@ -255,36 +290,36 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
 
   return (
     <div className="min-h-screen flex flex-col bg-stone-100 bg-[url('https://www.transparenttextures.com/patterns/japanese-sayagata.png')]">
-      
+
       {/* Header */}
       <div className="bg-stone-800 text-stone-100 px-4 py-2 flex justify-between items-center shadow-md z-20">
         <button onClick={onExit} className="p-2 hover:bg-stone-700 rounded-full" title="ホームへ戻る">
           <Home size={20} />
         </button>
         <div className="flex flex-col items-center">
-             <div className="text-sm font-serif">
-              {isReviewMode ? (
-                <span className="flex items-center gap-1 text-yellow-400 font-bold"><RefreshCcw size={14}/> 復習モード</span>
-              ) : (
-                <span>{completedPoemsCount.current} / 100 首</span>
-              )}
-            </div>
+          <div className="text-sm font-serif">
+            {isReviewMode ? (
+              <span className="flex items-center gap-1 text-yellow-400 font-bold"><RefreshCcw size={14} /> 復習モード</span>
+            ) : (
+              <span>{completedPoemsCount.current} / 100 首</span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2 text-stone-400 text-xs md:text-sm">
-             <Keyboard size={16}/>
-             <span className="hidden md:inline">Space: スキップ</span>
+          <Keyboard size={16} />
+          <span className="hidden md:inline">Space: スキップ</span>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-start p-2 md:p-4 w-full max-w-6xl mx-auto overflow-hidden">
-        
+
         {/* Top Section: Question Area */}
         <div className="w-full flex justify-center mb-4 md:mb-8 min-h-[80px] md:min-h-[120px] items-center">
           {mode === GameMode.KAMI_TO_SHIMO ? (
             // KAMI -> SHIMO: Show Kami text
             <div className="relative w-full max-w-3xl bg-white/90 p-6 md:p-8 rounded-xl shadow-lg border-2 border-stone-200 min-h-[100px] flex items-center justify-start">
-              <h2 className="text-2xl md:text-4xl font-serif text-stone-800 text-left tracking-widest leading-relaxed whitespace-nowrap">
+              <h2 className={`text-2xl md:text-4xl font-serif text-stone-800 text-left tracking-widest leading-relaxed ${isMobile ? 'whitespace-pre-wrap' : 'whitespace-nowrap'}`}>
                 {displayedKami}
               </h2>
             </div>
@@ -292,12 +327,12 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
             // SHIMO -> KAMI: Show Shimo Card (Question)
             // This is just a display, no interaction needed
             <div className="py-2">
-               <Card 
-                  text={currentPoem.shimo} 
-                  isSakasama={isSakasamaThisTurn} 
-                  className="scale-110 md:scale-125"
-                  disabled
-                />
+              <Card
+                text={currentPoem.shimo}
+                isSakasama={isSakasamaThisTurn}
+                className="scale-110 md:scale-125"
+                disabled
+              />
             </div>
           )}
         </div>
@@ -305,9 +340,9 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
         {/* Feedback Overlay (Only for incorrect) */}
         {feedback === 'incorrect' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 pointer-events-none">
-             <div className="text-5xl md:text-7xl font-bold text-red-600 drop-shadow-lg bg-white/80 px-8 py-4 rounded-xl border-4 border-red-500 animate-bounce">
-                答え
-             </div>
+            <div className="text-5xl md:text-7xl font-bold text-red-600 drop-shadow-lg bg-white/80 px-8 py-4 rounded-xl border-4 border-red-500 animate-bounce">
+              答え
+            </div>
           </div>
         )}
 
@@ -315,20 +350,23 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
         <div className="w-full flex-1 flex flex-col justify-center">
           {mode === GameMode.KAMI_TO_SHIMO ? (
             // KAMI -> SHIMO: Select from Cards
-            // 2 rows of 5 cards
-            <div className="grid grid-cols-5 gap-2 md:gap-6 justify-items-center w-full max-w-5xl mx-auto">
+            // Desktop: 2 rows of 5 cards (grid-cols-5)
+            // Mobile: 2x2 grid (grid-cols-2)
+            <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-5 gap-2 md:gap-6'} justify-items-center w-full max-w-5xl mx-auto`}>
               {options.map((opt, idx) => (
-                <Card 
-                  key={opt.id}
-                  text={opt.shimo}
-                  isSakasama={isSakasamaThisTurn}
-                  onClick={() => handleOptionClick(opt.id)}
+                <Card
+                  key={opt.poem.id}
+                  text={opt.poem.shimo}
+                  isSakasama={opt.isSakasama}
+                  onClick={() => handleOptionClick(opt.poem.id)}
                   disabled={feedback !== null}
                   // Highlight correct if feedback is incorrect
-                  isCorrectHighlight={feedback === 'incorrect' && opt.id === highlightCorrectId}
+                  isCorrectHighlight={feedback === 'incorrect' && opt.poem.id === highlightCorrectId}
                   // Fade others if feedback is incorrect
-                  className={feedback === 'incorrect' && opt.id !== highlightCorrectId ? "opacity-20 blur-[2px]" : ""}
-                  shortcutKey={idx === 9 ? '0' : (idx + 1).toString()}
+                  className={feedback === 'incorrect' && opt.poem.id !== highlightCorrectId ? "opacity-20 blur-[2px]" : ""}
+                  // Hide numbers on mobile
+                  shortcutKey={isMobile ? undefined : (idx === 9 ? '0' : (idx + 1).toString())}
+                  isMobile={isMobile}
                 />
               ))}
             </div>
@@ -337,23 +375,23 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 w-full max-w-4xl mx-auto">
               {options.map((opt, idx) => (
                 <button
-                  key={opt.id}
-                  onClick={() => handleOptionClick(opt.id)}
+                  key={opt.poem.id}
+                  onClick={() => handleOptionClick(opt.poem.id)}
                   disabled={feedback !== null}
                   className={`
                     relative group
                     p-4 md:p-6 rounded-xl border-2 text-left transition-all duration-200
                     font-serif text-lg md:text-2xl text-stone-800
                     flex items-center gap-4
-                    ${feedback === 'incorrect' && opt.id === highlightCorrectId ? 'bg-red-50 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)] z-10 scale-105' : ''}
-                    ${feedback === 'incorrect' && opt.id !== highlightCorrectId ? 'opacity-30' : ''}
+                    ${feedback === 'incorrect' && opt.poem.id === highlightCorrectId ? 'bg-red-50 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)] z-10 scale-105' : ''}
+                    ${feedback === 'incorrect' && opt.poem.id !== highlightCorrectId ? 'opacity-30' : ''}
                     ${feedback === null ? 'bg-white border-stone-300 hover:border-teal-600 hover:bg-stone-50 hover:shadow-md' : ''}
                   `}
                 >
                   <span className="flex-shrink-0 w-8 h-8 rounded-full bg-stone-200 text-stone-600 flex items-center justify-center font-sans font-bold text-sm">
                     {idx + 1}
                   </span>
-                  <span>{opt.kami}</span>
+                  <span>{opt.poem.kami}</span>
                 </button>
               ))}
             </div>

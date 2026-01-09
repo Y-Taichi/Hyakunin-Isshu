@@ -8,35 +8,38 @@ interface CardProps {
   disabled?: boolean;
   shortcutKey?: string;
   isCorrectHighlight?: boolean; // New prop for highlighting correct answer on mistake
+  isMobile?: boolean; // New prop to disable hover effects
 }
 
-const Card: React.FC<CardProps> = ({ 
-  text, 
-  isSakasama = false, 
-  onClick, 
-  className = '', 
+const Card: React.FC<CardProps> = ({
+  text,
+  isSakasama = false,
+  onClick,
+  className = '',
+  disabled = false,
   disabled = false,
   shortcutKey,
-  isCorrectHighlight = false
+  isCorrectHighlight = false,
+  isMobile = false
 }) => {
   // Map text characters to grid positions
   // Standard Shimo is 14 chars. 5-5-4 distribution.
   // Grid is 3 columns (Vertical lines), 5 rows (Chars).
   // Right column (Col 3) is first line.
-  
+
   const chars = useMemo(() => {
     const c = text.split('');
     const gridItems = [];
-    
+
     // We have 15 cells in a 3x5 grid.
     // Line 1: Indices 0-4 (Right Column)
     // Line 2: Indices 5-9 (Middle Column)
     // Line 3: Indices 10-14 (Left Column)
-    
+
     // Position mapping:
     // Cell at Row r (1-5), Col c (1-3)
     // We render items and place them using grid-column/grid-row CSS.
-    
+
     // Line 1 (Rightmost, Col 3)
     for (let i = 0; i < 5; i++) {
       gridItems.push({ char: c[i] || '', col: 3, row: i + 1 });
@@ -49,7 +52,7 @@ const Card: React.FC<CardProps> = ({
     for (let i = 0; i < 5; i++) {
       gridItems.push({ char: c[i + 10] || '', col: 1, row: i + 1 });
     }
-    
+
     return gridItems;
   }, [text]);
 
@@ -68,7 +71,8 @@ const Card: React.FC<CardProps> = ({
         select-none
         transition-all duration-200
         ${disabled && !isCorrectHighlight ? 'opacity-40 grayscale' : 'opacity-100'}
-        ${!disabled && !isCorrectHighlight ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1' : ''}
+        ${!disabled && !isCorrectHighlight && !isMobile ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1' : ''}
+        ${!disabled && !isCorrectHighlight && isMobile ? 'cursor-pointer active:scale-95' : ''}
         ${isSakasama ? 'rotate-180' : 'rotate-0'}
         ${className}
       `}
@@ -94,7 +98,7 @@ const Card: React.FC<CardProps> = ({
       {/* Grid Container */}
       <div className="grid grid-cols-3 grid-rows-5 w-full h-full p-1 gap-0.5">
         {chars.map((item, idx) => (
-          <div 
+          <div
             key={idx}
             className="flex items-center justify-center font-serif font-bold text-stone-900 leading-none"
             style={{
@@ -103,9 +107,9 @@ const Card: React.FC<CardProps> = ({
               fontSize: 'min(5vw, 2.5rem)' // Responsive max font size
             }}
           >
-             <span className="w-full h-full flex items-center justify-center">
-               {item.char}
-             </span>
+            <span className="w-full h-full flex items-center justify-center">
+              {item.char}
+            </span>
           </div>
         ))}
       </div>
