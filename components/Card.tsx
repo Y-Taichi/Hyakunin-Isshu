@@ -61,12 +61,10 @@ const Card: React.FC<CardProps> = ({
       className={`
         relative 
         bg-[#fdfaf5] 
-        ${isCorrectHighlight ? 'border-4 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]' : 'border-2 border-[#2d4a3e]'}
+        ${isCorrectHighlight ? 'border-4 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]' : 'border-2 border-emerald-900'}
         rounded-md shadow-md 
         /* Aspect ratio 3:5 roughly matches the grid */
-        w-24 h-40
-        md:w-32 md:h-[13.3rem]
-        lg:w-40 lg:h-[16.6rem]
+        ${isMobile ? 'w-auto h-full aspect-[3/4.5] max-h-[42vh]' : 'w-24 h-40 md:w-32 md:h-[13.3rem] lg:w-40 lg:h-[16.6rem]'}
         select-none
         transition-all duration-200
         ${disabled && !isCorrectHighlight ? 'opacity-40 grayscale' : 'opacity-100'}
@@ -85,7 +83,8 @@ const Card: React.FC<CardProps> = ({
         <div className={`
             absolute -top-3 -left-3 md:-top-4 md:-left-4 
             w-6 h-6 md:w-8 md:h-8 
-            bg-stone-800 text-white 
+            w-6 h-6 md:w-8 md:h-8 
+            bg-emerald-900 text-white 
             rounded-full flex items-center justify-center 
             font-sans font-bold text-sm md:text-base shadow-sm z-10
             ${isSakasama ? 'rotate-180' : ''} /* Counter-rotate if needed, or let it rotate? Let's let it rotate to match card orientation physically */
@@ -99,7 +98,7 @@ const Card: React.FC<CardProps> = ({
         {chars.map((item, idx) => (
           <div
             key={idx}
-            className="flex items-center justify-center font-serif font-bold text-stone-900 leading-none"
+            className="flex items-center justify-center font-serif font-bold text-emerald-950 leading-none"
             style={{
               gridColumn: item.col,
               gridRow: item.row,

@@ -168,8 +168,17 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
 
     // Distractors count: Mobile KAMI_TO_SHIMO -> 3 (Total 4). Desktop -> 9 (Total 10).
     // ShimoToKami -> 5 (Total 6) - keeping unchanged for now unless requested.
-    let distractorsCount = mode === GameMode.KAMI_TO_SHIMO ? 9 : 5;
-    if (isMobile && mode === GameMode.KAMI_TO_SHIMO) {
+    // Distractors count: Mobile KAMI_TO_SHIMO -> 3 (Total 4). Desktop -> 9 (Total 10).
+    // ShimoToKami -> 5 (Total 6) - Desktop. Mobile requirement: "BUTTONS are 4 only".
+    // So ShimoToKami Mobile -> 3 (Total 4).
+    let distractorsCount = 9; // Default Desktop KAMI_TO_SHIMO
+
+    if (mode === GameMode.SHIMO_TO_KAMI) {
+      distractorsCount = 5; // Default Desktop SHIMO_TO_KAMI -> 6 options
+    }
+
+    if (isMobile) {
+      // Both modes max 4 options (3 distractors)
       distractorsCount = 3;
     }
 
@@ -289,7 +298,10 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
   if (!currentPoem) return <div className="h-screen flex items-center justify-center">Loading...</div>;
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-100 bg-[url('https://www.transparenttextures.com/patterns/japanese-sayagata.png')]">
+    <div className={`
+      h-[100dvh] w-full flex flex-col overflow-hidden
+      bg-check-green
+    `}>
 
       {/* Header */}
       <div className="bg-stone-800 text-stone-100 px-4 py-2 flex justify-between items-center shadow-md z-20">
@@ -299,27 +311,27 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
         <div className="flex flex-col items-center">
           <div className="text-sm font-serif">
             {isReviewMode ? (
-              <span className="flex items-center gap-1 text-yellow-400 font-bold"><RefreshCcw size={14} /> 復習モード</span>
+              <span className="flex items-center gap-1 text-yellow-300 font-bold"><RefreshCcw size={14} /> 復習モード</span>
             ) : (
               <span>{completedPoemsCount.current} / 100 首</span>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 text-stone-400 text-xs md:text-sm">
+        <div className="flex items-center gap-2 text-emerald-200 text-xs md:text-sm">
           <Keyboard size={16} />
           <span className="hidden md:inline">Space: スキップ</span>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-start p-2 md:p-4 w-full max-w-6xl mx-auto overflow-hidden">
+      <div className="flex-1 flex flex-col items-center justify-start p-1 md:p-4 w-full max-w-6xl mx-auto overflow-hidden">
 
         {/* Top Section: Question Area */}
         <div className="w-full flex justify-center mb-4 md:mb-8 min-h-[80px] md:min-h-[120px] items-center">
           {mode === GameMode.KAMI_TO_SHIMO ? (
             // KAMI -> SHIMO: Show Kami text
-            <div className="relative w-full max-w-3xl bg-white/90 p-6 md:p-8 rounded-xl shadow-lg border-2 border-stone-200 min-h-[100px] flex items-center justify-start">
-              <h2 className={`text-2xl md:text-4xl font-serif text-stone-800 text-left tracking-widest leading-relaxed ${isMobile ? 'whitespace-pre-wrap' : 'whitespace-nowrap'}`}>
+            <div className="relative w-full max-w-3xl bg-white/90 p-4 md:p-8 rounded-xl shadow-lg border-2 border-emerald-200 min-h-[80px] flex items-center justify-start">
+              <h2 className={`text-xl md:text-4xl font-serif text-emerald-900 text-left tracking-widest leading-relaxed ${isMobile ? 'whitespace-pre-wrap' : 'whitespace-nowrap'}`}>
                 {displayedKami}
               </h2>
             </div>
@@ -351,8 +363,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
           {mode === GameMode.KAMI_TO_SHIMO ? (
             // KAMI -> SHIMO: Select from Cards
             // Desktop: 2 rows of 5 cards (grid-cols-5)
-            // Mobile: 2x2 grid (grid-cols-2)
-            <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-5 gap-2 md:gap-6'} justify-items-center w-full max-w-5xl mx-auto`}>
+            // Mobile: 2x2 grid (grid-cols-2), Minimal Gap
+            <div className={`grid ${isMobile ? 'grid-cols-2 gap-1 w-full h-full content-center' : 'grid-cols-5 gap-2 md:gap-6 w-full max-w-5xl'} justify-items-center mx-auto`}>
               {options.map((opt, idx) => (
                 <Card
                   key={opt.poem.id}
@@ -372,7 +384,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
             </div>
           ) : (
             // SHIMO -> KAMI: Select from Text Buttons
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 w-full max-w-4xl mx-auto">
+            <div className={`grid ${isMobile ? 'grid-cols-1 gap-2 w-full px-2 py-1 overflow-y-auto' : 'grid-cols-2 gap-3 md:gap-4 w-full max-w-4xl'} mx-auto`}>
               {options.map((opt, idx) => (
                 <button
                   key={opt.poem.id}
@@ -381,11 +393,11 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
                   className={`
                     relative group
                     p-4 md:p-6 rounded-xl border-2 text-left transition-all duration-200
-                    font-serif text-lg md:text-2xl text-stone-800
+                    font-serif text-lg md:text-2xl text-emerald-900
                     flex items-center gap-4
                     ${feedback === 'incorrect' && opt.poem.id === highlightCorrectId ? 'bg-red-50 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)] z-10 scale-105' : ''}
                     ${feedback === 'incorrect' && opt.poem.id !== highlightCorrectId ? 'opacity-30' : ''}
-                    ${feedback === null ? 'bg-white border-stone-300 hover:border-teal-600 hover:bg-stone-50 hover:shadow-md' : ''}
+                    ${feedback === null ? 'bg-white border-emerald-200 hover:border-emerald-500 hover:bg-emerald-50 hover:shadow-md' : ''}
                   `}
                 >
                   <span className="flex-shrink-0 w-8 h-8 rounded-full bg-stone-200 text-stone-600 flex items-center justify-center font-sans font-bold text-sm">
