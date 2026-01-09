@@ -17,7 +17,6 @@ const Card: React.FC<CardProps> = ({
   onClick,
   className = '',
   disabled = false,
-  disabled = false,
   shortcutKey,
   isCorrectHighlight = false,
   isMobile = false
