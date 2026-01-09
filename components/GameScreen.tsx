@@ -300,7 +300,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
   return (
     <div className={`
       h-[100dvh] w-full flex flex-col overflow-hidden
-      bg-check-green
+      bg-stone-100 bg-[url('https://www.transparenttextures.com/patterns/japanese-sayagata.png')] font-bold
     `}>
 
       {/* Header */}
@@ -311,13 +311,13 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
         <div className="flex flex-col items-center">
           <div className="text-sm font-serif">
             {isReviewMode ? (
-              <span className="flex items-center gap-1 text-yellow-300 font-bold"><RefreshCcw size={14} /> 復習モード</span>
+              <span className="flex items-center gap-1 text-yellow-500 font-bold"><RefreshCcw size={14} /> 復習モード</span>
             ) : (
               <span>{completedPoemsCount.current} / 100 首</span>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 text-emerald-200 text-xs md:text-sm">
+        <div className="flex items-center gap-2 text-stone-400 text-xs md:text-sm">
           <Keyboard size={16} />
           <span className="hidden md:inline">Space: スキップ</span>
         </div>
@@ -330,8 +330,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
         <div className="w-full flex justify-center mb-4 md:mb-8 min-h-[80px] md:min-h-[120px] items-center">
           {mode === GameMode.KAMI_TO_SHIMO ? (
             // KAMI -> SHIMO: Show Kami text
-            <div className="relative w-full max-w-3xl bg-white/90 p-4 md:p-8 rounded-xl shadow-lg border-2 border-emerald-200 min-h-[80px] flex items-center justify-start">
-              <h2 className={`text-xl md:text-4xl font-serif text-emerald-900 text-left tracking-widest leading-relaxed ${isMobile ? 'whitespace-pre-wrap' : 'whitespace-nowrap'}`}>
+            <div className="relative w-full max-w-3xl bg-white/90 p-4 md:p-8 rounded-xl shadow-lg border-2 border-stone-200 min-h-[80px] flex items-center justify-start">
+              <h2 className={`text-xl md:text-4xl font-serif text-stone-800 text-left tracking-widest leading-relaxed font-bold ${isMobile ? 'whitespace-pre-wrap' : 'whitespace-nowrap'}`}>
                 {displayedKami}
               </h2>
             </div>
@@ -393,11 +393,11 @@ const GameScreen: React.FC<GameScreenProps> = ({ mode, sakasamaMode, onExit }) =
                   className={`
                     relative group
                     p-4 md:p-6 rounded-xl border-2 text-left transition-all duration-200
-                    font-serif text-lg md:text-2xl text-emerald-900
+                    font-serif text-lg md:text-2xl text-stone-800 font-bold
                     flex items-center gap-4
                     ${feedback === 'incorrect' && opt.poem.id === highlightCorrectId ? 'bg-red-50 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)] z-10 scale-105' : ''}
                     ${feedback === 'incorrect' && opt.poem.id !== highlightCorrectId ? 'opacity-30' : ''}
-                    ${feedback === null ? 'bg-white border-emerald-200 hover:border-emerald-500 hover:bg-emerald-50 hover:shadow-md' : ''}
+                    ${feedback === null ? 'bg-white border-stone-300 hover:border-teal-600 hover:bg-stone-50 hover:shadow-md' : ''}
                   `}
                 >
                   <span className="flex-shrink-0 w-8 h-8 rounded-full bg-stone-200 text-stone-600 flex items-center justify-center font-sans font-bold text-sm">
